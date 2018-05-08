@@ -1,5 +1,8 @@
 package com.codecool.demo;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -9,11 +12,18 @@ import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.access.AccessDeniedHandler;
 
+import java.util.List;
+
 @Configuration
 @EnableWebSecurity
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
+    private static final Logger log = LoggerFactory.getLogger(WebSecurityConfig.class);
+
     private final AccessDeniedHandler accessDeniedHandler;
+
+    @Autowired
+    private DAO dao;
 
     // @Autowired
     public WebSecurityConfig(AccessDeniedHandler accessDeniedHandler) {
@@ -21,12 +31,24 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         this.accessDeniedHandler = accessDeniedHandler;
     }
 
+
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
 
+        dao.init();
+        List<Rule> rules = dao.getRules();
+        rules.stream().forEach(rule -> log.info(rule.toString()));
+
+        for(Rule rule : rules){
+            http.authorizeRequests()
+                    .antMatchers(rule.getPath()).hasAnyRole(rule.getRole())
+                    .anyRequest().authenticated();
+        }
+
         http.authorizeRequests()
-                .antMatchers("/admin").hasAnyRole("ADMIN")
-                .antMatchers("/user").hasAnyRole("USER")
+//                .antMatchers("/admin").hasAnyRole("ADMIN")
+//                .antMatchers("/user").hasAnyRole("USER")
                 .antMatchers("/", "/home", "/about").permitAll()
                 .anyRequest().authenticated()
             .and()
